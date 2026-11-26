@@ -203,7 +203,7 @@
         <!-- Dynamic Aspect Ratio Preview Stage -->
         <div class="stage-box">
           <div id="previewFrameBox" class="relative rounded-[20px] overflow-hidden bg-black border border-white/20 shadow-2xl flex items-center justify-center" style="aspect-ratio: 9 / 16; max-height: 465px; max-width: 262px; width: 100%;">
-            <video id="sourceVideo" class="hidden" playsinline crossorigin="anonymous"></video>
+            <video id="sourceVideo" playsinline crossorigin="anonymous" style="position:fixed;width:2px;height:2px;opacity:0.001;pointer-events:none;z-index:-1;"></video>
             <audio id="extraAudioEl" class="hidden" crossorigin="anonymous"></audio>
             <canvas id="previewCanvas" width="540" height="960" class="w-full h-full object-contain block"></canvas>
 
@@ -771,7 +771,7 @@
         <button id="btnExportVideo" type="button" class="glass-btn-light flex items-center justify-between p-3.5 rounded-2xl text-left">
           <div>
             <span class="block text-xs font-semibold text-[#090b12]">Turbo Export Video (.mp4 / .webm)</span>
-            <span id="exportVideoDesc" class="block text-[11px] text-[#475569] mt-0.5">Hardware 4x fast MP4 · captions &amp; boosted audio</span>
+            <span id="exportVideoDesc" class="block text-[11px] text-[#475569] mt-0.5">Smooth 30fps Hardware MP4 · captions &amp; boosted audio</span>
           </div>
           <i data-lucide="film" class="w-4 h-4 text-[#090b12]" stroke-width="2"></i>
         </button>
@@ -3346,7 +3346,7 @@ ${textLayers}
 
           let lastTsUs = -1;
           let finished = false;
-          sourceVideo.playbackRate = 4.0;
+          sourceVideo.playbackRate = 1.0;
 
           await new Promise((resolve) => {
             let rafFallback = null;
@@ -3378,10 +3378,10 @@ ${textLayers}
                 frameCount++;
 
                 // Adaptive backpressure for 8GB mobile devices
-                if (videoEncoder.encodeQueueSize > 10 && sourceVideo.playbackRate > 2.0) {
+                if (videoEncoder.encodeQueueSize > 10 && false) {
                   sourceVideo.playbackRate = 2.0;
-                } else if (videoEncoder.encodeQueueSize < 4 && sourceVideo.playbackRate < 4.0) {
-                  sourceVideo.playbackRate = 4.0;
+                } else if (videoEncoder.encodeQueueSize < 4 && false) {
+                  sourceVideo.playbackRate = 1.0;
                 }
 
                 const pct = Math.min(95, 10 + Math.round((mediaTime / Math.max(0.1, exportDur)) * 85));
