@@ -768,6 +768,14 @@
           <i data-lucide="copy" class="w-4 h-4 text-white/70" stroke-width="1.8"></i>
         </button>
 
+        <div class="glass-card rounded-2xl p-2.5 flex items-center justify-between gap-2">
+          <span class="text-xs font-medium text-white/80 pl-1">Export FPS</span>
+          <div class="inline-flex items-center gap-1 p-1 rounded-xl bg-black/35 border border-white/10">
+            <button type="button" data-fps="30" class="export-fps-btn px-3 py-1 rounded-lg text-xs font-semibold bg-[#ff5a36] text-white transition-colors">30 FPS</button>
+            <button type="button" data-fps="60" class="export-fps-btn px-3 py-1 rounded-lg text-xs font-medium text-white/70 hover:text-white transition-colors">60 FPS</button>
+          </div>
+        </div>
+
         <button id="btnExportVideo" type="button" class="glass-btn-light flex items-center justify-between p-3.5 rounded-2xl text-left">
           <div>
             <span class="block text-xs font-semibold text-[#090b12]">Turbo Export Video (.mp4 / .webm)</span>
@@ -1039,6 +1047,7 @@
         captions: JSON.parse(JSON.stringify(DEFAULT_CAPTIONS)),
         isListening: false,
         isTranscribing: false,
+        exportFps: 30,
         isExporting: false
       };
 
@@ -3201,8 +3210,11 @@ ${textLayers}
       }
 
       async function findSupportedH264Config(width, height, fps) {
-        const codecs = ['avc1.42001f', 'avc1.420028', 'avc1.4d0028', 'avc1.640028'];
-        const bitrate = (width * height > 900000) ? 5500000 : 4000000;
+        const codecs = fps >= 60
+          ? ['avc1.42002a', 'avc1.4d002a', 'avc1.64002a', 'avc1.420028', 'avc1.42001f']
+          : ['avc1.42001f', 'avc1.420028', 'avc1.4d0028', 'avc1.640028'];
+        const baseRate = (width * height > 900000) ? 5500000 : 4200000;
+        const bitrate = fps >= 60 ? Math.round(baseRate * 1.5) : baseRate;
         for (const codec of codecs) {
           for (const hw of ['prefer-hardware', 'no-preference']) {
             const cfg = {
@@ -3229,7 +3241,7 @@ ${textLayers}
         }
         const width = canvas.width & ~1;
         const height = canvas.height & ~1;
-        const fps = 30;
+        const fps = state.exportFps || 30;
         const vConfig = await findSupportedH264Config(width, height, fps);
         if (!vConfig) return false;
 
@@ -3393,7 +3405,7 @@ ${textLayers}
                 finishCapture();
                 return;
               }
-              if (typeof sourceVideo.requestVideoFrameCallback === 'function') {
+              if (fps < 60 && typeof sourceVideo.requestVideoFrameCallback === 'function') {
                 vfcExportId = sourceVideo.requestVideoFrameCallback(captureStep);
               } else {
                 rafFallback = requestAnimationFrame(captureStep);
@@ -3402,7 +3414,7 @@ ${textLayers}
 
             sourceVideo.addEventListener('ended', finishCapture);
             sourceVideo.play().then(() => {
-              if (typeof sourceVideo.requestVideoFrameCallback === 'function') {
+              if (fps < 60 && typeof sourceVideo.requestVideoFrameCallback === 'function') {
                 vfcExportId = sourceVideo.requestVideoFrameCallback(captureStep);
               } else {
                 rafFallback = requestAnimationFrame(captureStep);
@@ -3459,7 +3471,7 @@ ${textLayers}
         exportProgressBar.style.width = '0%';
 
         try {
-          const videoTracks = canvas.captureStream(30).getVideoTracks();
+          const videoTracks = canvas.captureStream(state.exportFps || 30).getVideoTracks();
           const audioTracks = mixStreamDest ? mixStreamDest.stream.getAudioTracks() : [];
           const combinedStream = new MediaStream([...videoTracks, ...audioTracks]);
 
@@ -4026,6 +4038,22 @@ ${textLayers}
         try { document.execCommand('copy'); showToast('Captions copied'); } catch (e) { showToast('Copy failed'); }
         document.body.removeChild(ta);
       }
+
+      document.querySelectorAll('.export-fps-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const chosen = parseInt(btn.dataset.fps, 10) === 60 ? 60 : 30;
+          state.exportFps = chosen;
+          document.querySelectorAll('.export-fps-btn').forEach(b => {
+            const active = parseInt(b.dataset.fps, 10) === chosen;
+            b.className = active
+              ? 'export-fps-btn px-3 py-1 rounded-lg text-xs font-semibold bg-[#ff5a36] text-white transition-colors'
+              : 'export-fps-btn px-3 py-1 rounded-lg text-xs font-medium text-white/70 hover:text-white transition-colors';
+          });
+          const desc = document.getElementById('exportVideoDesc');
+          if (desc) desc.textContent = `Smooth ${chosen} FPS Hardware MP4 · captions & boosted audio`;
+          showToast(`Export FPS set to ${chosen} FPS`);
+        });
+      });
 
       btnExportVideo.addEventListener('click', exportBurnedVideo);
 
